@@ -39,9 +39,9 @@ class ATO:
         self.last_state = None
         while True:
             pin_reading = GPIO.input(RESERVOIR_ATO_PIN)
-            if pin_reading is False and self.last_state is not False:
+            if pin_reading == 0 and self.last_state != 0:
                 self.disable_ato_callback()
-            elif pin_reading is True and self.last_state is not True:
+            elif pin_reading == 1 and self.last_state != 1:
                 self.enable_ato_callback()
             self.last_state = pin_reading
             time.sleep(5)  # check sensor every this amount of seconds
@@ -50,7 +50,7 @@ class ATO:
         logger.info("water level empty, disabling ATO")
         session = self._login()
 
-        r = session.get("http://localhost/api/macros/{id}/run".format(id=DISABLE_ATO_MACRO_ID))
+        r = session.post("http://localhost/api/macros/{id}/run".format(id=DISABLE_ATO_MACRO_ID))
         if r.status_code != 200:
             logger.error("Error communicating with macro API")
         else:
@@ -60,7 +60,7 @@ class ATO:
         logger.info("water refilled, enabling ATO")
         session = self._login()
 
-        r = session.get("http://localhost/api/macros/{id}/run".format(id=ENABLE_ATO_MACRO_ID))
+        r = session.post("http://localhost/api/macros/{id}/run".format(id=ENABLE_ATO_MACRO_ID))
         if r.status_code != 200:
             logger.error("Error communicating with macro API")
         else:
