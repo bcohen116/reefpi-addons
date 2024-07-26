@@ -25,19 +25,26 @@ class ATO:
         return session
 
     def setup(self):
-        login_config = json.loads("/root/config/login.json")  # must manually create this file
+        login_file = open(os.path.expanduser('~') + "/Documents/login.json")
+        login_config = json.load(login_file)  # must manually create this file
         self.user = login_config["username"]
         self.pwd = login_config["pwd"]
         logger.info("Initializing ATO sensors...")
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(RESERVOIR_ATO_PIN, GPIO.IN)
-
-        # want to detect when reservoir is empty, so set callback on falling edge
-        GPIO.add_event_detect(RESERVOIR_ATO_PIN, GPIO.FALLING, callback=self.disable_ato_callback, bouncetime=200)
-
-        # when water is refilled, allow ATO usage again
-        GPIO.add_event_detect(RESERVOIR_ATO_PIN, GPIO.RISING, callback=self.enable_ato_callback, bouncetime=200)
         logger.info("Setup ATO sensors")
+
+    def detection_loop(self):
+        # loop sensor reading forever
+        self.last_state = None
+        while True:
+            pin_reading = GPIO.input(RESERVOIR_ATO_PIN)
+            if pin_reading is False and self.last_state is not False:
+                self.disable_ato_callback()
+            elif pin_reading is True and self.last_state is not True:
+                self.enable_ato_callback()
+            self.last_state = pin_reading
+            time.sleep(5)  # check sensor every this amount of seconds
 
     def disable_ato_callback(self):
         logger.info("water level empty, disabling ATO")
@@ -63,6 +70,7 @@ class ATO:
 def main():
     ato = ATO()
     ato.setup()
+    ato.detection_loop()
 
 
 if __name__ == "__main__":
