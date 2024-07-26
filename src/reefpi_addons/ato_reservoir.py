@@ -60,6 +60,10 @@ class ATO:
             logger.info("Sent Macro Request")
 
 
-if __name__ == "__main__":
+def main():
     ato = ATO()
     ato.setup()
+
+
+if __name__ == "__main__":
+    main()

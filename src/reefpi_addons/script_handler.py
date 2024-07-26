@@ -23,5 +23,9 @@ def runner():
         time.sleep(5)
 
 
-if __name__ == "__main__":
+def main():
     runner()
+
+
+if __name__ == "__main__":
+    main()
