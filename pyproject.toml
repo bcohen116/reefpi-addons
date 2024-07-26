@@ -1,0 +1,22 @@
+[project]
+name = "reefpi-addons"
+version = "0.0.1"
+authors = [
+  { name="Ben Cohen", email="author@example.com" },
+]
+description = "Automation scripts for a reef pi controller"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Raspian",
+]
+
+[project.urls]
+Homepage = "https://github.com/pypa/sampleproject"
+Issues = "https://github.com/pypa/sampleproject/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
