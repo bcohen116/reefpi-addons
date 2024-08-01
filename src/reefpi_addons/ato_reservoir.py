@@ -42,7 +42,7 @@ class ATO:
             session = self._login()
 
             # setup equipment for an unused digital output pin, use state to sense when macro was used
-            r = session.get("http://localhost/api/equipment/{id}/".format(id=WATER_CHANGE_ID))
+            r = session.get("http://localhost/api/equipment/{id}".format(id=WATER_CHANGE_ID))
             if r.status_code != 200:
                 logger.error("Error communicating with equipment API")
                 water_change_in_progress = False
