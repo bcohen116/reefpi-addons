@@ -16,6 +16,7 @@ RESERVOIR_ATO_PIN = 23
 # setup using the reef pi interface, ID grabbed manually through API requests
 DISABLE_ATO_MACRO_ID = 2
 ENABLE_ATO_MACRO_ID = 3
+WATER_CHANGE_ID = 3
 
 
 class ATO:
@@ -38,10 +39,21 @@ class ATO:
         # loop sensor reading forever
         self.last_state = None
         while True:
+            session = self._login()
+
+            # setup equipment for an unused digital output pin, use state to sense when macro was used
+            r = session.get("http://localhost/api/equipment/{id}/".format(id=WATER_CHANGE_ID))
+            if r.status_code != 200:
+                logger.error("Error communicating with equipment API")
+                water_change_in_progress = False
+            else:
+                equipment = json.loads(r.text)
+                water_change_in_progress = equipment["on"]
+
             pin_reading = GPIO.input(RESERVOIR_ATO_PIN)
-            if pin_reading == 0 and self.last_state != 0:
+            if pin_reading == 0 and self.last_state != 0 and not water_change_in_progress:
                 self.disable_ato_callback()
-            elif pin_reading == 1 and self.last_state != 1:
+            elif pin_reading == 1 and self.last_state != 1 and not water_change_in_progress:
                 self.enable_ato_callback()
             self.last_state = pin_reading
             time.sleep(5)  # check sensor every this amount of seconds
