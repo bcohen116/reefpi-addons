@@ -55,7 +55,11 @@ class ATO:
                 self.disable_ato_callback()
             elif pin_reading == 1 and self.last_state != 1 and not water_change_in_progress:
                 self.enable_ato_callback()
-            self.last_state = pin_reading
+            if water_change_in_progress:
+                # need to do this to allow detection when water change is complete
+                self.last_state = None
+            else:
+                self.last_state = pin_reading
             time.sleep(5)  # check sensor every this amount of seconds
 
     def disable_ato_callback(self):
