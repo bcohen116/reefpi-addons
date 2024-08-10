@@ -5,6 +5,9 @@
 cat << 'EOF' >/etc/systemd/system/reefpi_addons.service
 [Unit]
 Description=Reef Pi Addons Python Scripts
+After=network-online.target reef-pi.service
+Wants=network-online.target reef-pi.service
+
 
 [Service]
 Type=simple
