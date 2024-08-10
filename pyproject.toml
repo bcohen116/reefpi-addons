@@ -1,6 +1,6 @@
 [project]
 name = "reefpi-addons"
-version = "0.0.1"
+dynamic = ["version"]
 authors = [
   { name="Ben Cohen", email="author@example.com" },
 ]
@@ -14,17 +14,19 @@ classifiers = [
 ]
 dependencies = [
     "requests",
-    "RPi.GPIO",
     "loguru"
 ]
+[project.optional-dependencies]
+GPIO = ["RPi.GPIO"]
 
 [project.urls]
-Homepage = "https://github.com/pypa/sampleproject"
-Issues = "https://github.com/pypa/sampleproject/issues"
+Homepage = "https://github.com/bcohen116/reefpi-addons"
+
+[tool.setuptools_scm]  # enables version number dynamically
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/reefpi_addons"]
