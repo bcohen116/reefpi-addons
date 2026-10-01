@@ -17,6 +17,7 @@ RESERVOIR_ATO_PIN = 23
 DISABLE_ATO_MACRO_ID = 2
 ENABLE_ATO_MACRO_ID = 3
 WATER_CHANGE_ID = 3
+DEBOUNCE_SECONDS = 5  # seconds a reading must remain stable before acting
 
 
 class ATO:
@@ -34,10 +35,14 @@ class ATO:
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(RESERVOIR_ATO_PIN, GPIO.IN)
         logger.info("Setup ATO sensors")
+        # debounce state
+        self.debounce_seconds = DEBOUNCE_SECONDS
+        self.last_state = None
+        self._pending_state = None
+        self._last_change_time = None
 
     def detection_loop(self):
-        # loop sensor reading forever
-        self.last_state = None
+        # loop sensor reading forever with debounce
         while True:
             session = self._login()
 
@@ -51,15 +56,40 @@ class ATO:
                 water_change_in_progress = equipment["on"]
 
             pin_reading = GPIO.input(RESERVOIR_ATO_PIN)
-            if pin_reading == 0 and self.last_state != 0 and not water_change_in_progress:
-                self.disable_ato_callback()
-            elif pin_reading == 1 and self.last_state != 1 and not water_change_in_progress:
-                self.enable_ato_callback()
+
             if water_change_in_progress:
-                # need to do this to allow detection when water change is complete
+                # reset debounce state during water change so we re-learn state afterwards
                 self.last_state = None
+                self._pending_state = None
+                self._last_change_time = None
             else:
-                self.last_state = pin_reading
+                # initialize stable state on first valid read
+                if self.last_state is None:
+                    self.last_state = pin_reading
+                    self._pending_state = None
+                    self._last_change_time = None
+                else:
+                    if pin_reading != self.last_state:
+                        # saw a different reading, start or continue debounce timer
+                        if self._pending_state is None or self._pending_state != pin_reading:
+                            self._pending_state = pin_reading
+                            self._last_change_time = time.time()
+                        else:
+                            # pending state matches current reading, check if stable long enough
+                            if time.time() - (self._last_change_time or 0) >= self.debounce_seconds:
+                                # commit the new stable state and trigger callback
+                                self.last_state = self._pending_state
+                                self._pending_state = None
+                                self._last_change_time = None
+                                if self.last_state == 0:
+                                    self.disable_ato_callback()
+                                elif self.last_state == 1:
+                                    self.enable_ato_callback()
+                    else:
+                        # reading matches stable state, clear any pending change
+                        self._pending_state = None
+                        self._last_change_time = None
+
             time.sleep(5)  # check sensor every this amount of seconds
 
     def disable_ato_callback(self):
