@@ -18,6 +18,8 @@ DISABLE_ATO_MACRO_ID = 2
 ENABLE_ATO_MACRO_ID = 3
 WATER_CHANGE_ID = 3
 DEBOUNCE_SECONDS = 5  # seconds a reading must remain stable before acting
+SENSOR_POLL_SECONDS = 0.1
+WATER_CHANGE_POLL_SECONDS = 5
 
 
 class ATO:
@@ -42,19 +44,24 @@ class ATO:
         self._last_change_time = None
 
     def detection_loop(self):
-        # loop sensor reading forever with debounce
+        water_change_in_progress = False
+        next_water_change_check = 0
+
         while True:
-            session = self._login()
+            now = time.monotonic()
+            if now >= next_water_change_check:
+                session = self._login()
+                # setup equipment for an unused digital output pin, use state to sense when macro was used
+                r = session.get("http://localhost/api/equipment/{id}".format(id=WATER_CHANGE_ID))
+                if r.status_code != 200:
+                    logger.error("Error communicating with equipment API")
+                    water_change_in_progress = False
+                else:
+                    equipment = json.loads(r.text)
+                    water_change_in_progress = equipment["on"]
+                next_water_change_check = time.monotonic() + WATER_CHANGE_POLL_SECONDS
 
-            # setup equipment for an unused digital output pin, use state to sense when macro was used
-            r = session.get("http://localhost/api/equipment/{id}".format(id=WATER_CHANGE_ID))
-            if r.status_code != 200:
-                logger.error("Error communicating with equipment API")
-                water_change_in_progress = False
-            else:
-                equipment = json.loads(r.text)
-                water_change_in_progress = equipment["on"]
-
+            now = time.monotonic()
             pin_reading = GPIO.input(RESERVOIR_ATO_PIN)
 
             if water_change_in_progress:
@@ -73,10 +80,10 @@ class ATO:
                         # saw a different reading, start or continue debounce timer
                         if self._pending_state is None or self._pending_state != pin_reading:
                             self._pending_state = pin_reading
-                            self._last_change_time = time.time()
+                            self._last_change_time = now
                         else:
                             # pending state matches current reading, check if stable long enough
-                            if time.time() - (self._last_change_time or 0) >= self.debounce_seconds:
+                            if now - self._last_change_time >= self.debounce_seconds:
                                 # commit the new stable state and trigger callback
                                 self.last_state = self._pending_state
                                 self._pending_state = None
@@ -90,7 +97,7 @@ class ATO:
                         self._pending_state = None
                         self._last_change_time = None
 
-            time.sleep(5)  # check sensor every this amount of seconds
+            time.sleep(SENSOR_POLL_SECONDS)
 
     def disable_ato_callback(self):
         logger.info("water level empty, disabling ATO")
